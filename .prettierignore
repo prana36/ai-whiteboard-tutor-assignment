@@ -1,0 +1,7 @@
+.next
+node_modules
+package-lock.json
+.npm-cache
+artifacts
+test-results
+docs/ASSIGNMENT.md

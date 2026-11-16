@@ -1,164 +1,174 @@
-# AI-Powered Interactive Whiteboard Tutor — Technical Assignment
+# Lumio · AI Whiteboard Tutor
 
-Welcome to the Braynix Studios technical assignment.
+A chat-first tutor that turns a topic into a short narrated lesson, with diagrams that build on an interactive whiteboard as the explanation plays.
 
-Your task is to build a working, end-to-end **AI-powered Interactive Whiteboard Tutor** that teaches a learner a topic through visual demonstrations and synchronized voice narration.
+Built for the Braynix Studios assignment with **Next.js App Router, React, TypeScript, Node.js route handlers, and OpenAI**. The original brief is preserved in [docs/ASSIGNMENT.md](docs/ASSIGNMENT.md).
 
-This is the same assignment for every applicant, regardless of the role or category they originally applied for.
+## Quick start
 
-## 1. Objective
+Prerequisites: **Node.js 22+**, npm, a modern browser, and an OpenAI API key with API billing enabled. A ChatGPT subscription does not supply API credits.
 
-Build an application where a learner enters a topic, receives a short AI-generated lesson of approximately **2 minutes**, and learns primarily by watching an interactive whiteboard demonstration while listening to the tutor explain the concept.
+```bash
+npm install
+```
 
-The experience should feel like a real tutor teaching on a whiteboard—not a chatbot that only displays paragraphs, and not a static video embedded in a webpage.
+Create your environment file:
 
-## 2. Required user flow
+```powershell
+# Windows PowerShell
+Copy-Item .env.example .env.local
+```
 
-1. The learner opens the application and enters a topic in a chat-first interface.
-2. The application generates a structured lesson using an AI model.
-3. The tutor presents the lesson through voice narration and visual whiteboard actions.
-4. Whiteboard actions stay synchronized with the narration as the lesson progresses.
-5. The learner can pause, resume, seek, replay, or restart the lesson.
-6. After the lesson, the learner can ask follow-up questions and receive relevant AI-generated answers.
+```bash
+# macOS / Linux
+cp .env.example .env.local
+```
 
-## 3. Core requirements
+Set `OPENAI_API_KEY` in `.env.local`, then:
 
-### A. Topic input and AI lesson generation
-- Provide a clean chat-first screen where the learner can enter a topic.
-- Use an AI model/API (for example, Gemini or an equivalent model) to generate the lesson.
-- Aim for approximately two minutes of teaching.
-- Generate a structured sequence of narration segments and corresponding whiteboard actions.
-- Handle loading states, invalid input, and AI/API errors gracefully.
+```bash
+npm run dev
+```
 
-### B. Interactive whiteboard
-- Provide a visible whiteboard or canvas for teaching.
-- Demonstrate concepts using appropriate visual elements such as diagrams, shapes, arrows, labels, drawings, equations, highlights, and annotations.
-- Reveal or update elements step by step as the lesson progresses.
-- Prefer clear visual explanations over large blocks of text.
-- The whiteboard should communicate the concept, not merely decorate the screen.
+Open **http://localhost:3000**. Enter a topic, generate a lesson, click **Prepare voice**, wait for narration preparation, then press **Play**. The second click respects browser autoplay policies. Focused topics such as “how binary search works” give the clearest two-minute lessons.
 
-### C. Voice narration and synchronization
-- Include spoken narration using a text-to-speech service or another suitable voice solution.
-- Synchronize narration with the relevant whiteboard actions.
-- The visual state should update at the appropriate point in the explanation.
-- Avoid a disconnected experience where the voice explains one step while the board displays another.
+Without a key, **Explore a sample lesson** offers an explicitly labeled, pre-written neural-network lesson with browser narration. Arbitrary lesson generation and follow-up answers require the real API; sample content is never presented as live AI output.
 
-### D. Lesson playback controls
+## Environment variables
 
-Provide working controls for:
-- Play
-- Pause
-- Resume
-- Seek or move through the lesson timeline
-- Restart
-- Replay
+| Variable            | Required    | Purpose                                                     |
+| ------------------- | ----------- | ----------------------------------------------------------- |
+| `OPENAI_API_KEY`    | For live AI | Server-side OpenAI API key                                  |
+| `OPENAI_MODEL`      | No          | Lesson/chat model; defaults to `gpt-4o-mini`                |
+| `OPENAI_TTS_MODEL`  | No          | Speech model; defaults to `gpt-4o-mini-tts`                 |
+| `TUTOR_ACCESS_CODE` | No          | Optional shared demo access code to control paid API access |
 
-Playback controls must affect the actual lesson and its synchronized narration/visual sequence.
+Restart the dev server after changes. Keys must never use the `NEXT_PUBLIC_` prefix. `.env.local` is ignored by Git. If you configure an access code, visitors enter it in Settings; it is kept in session storage and sent in a request header. Share the code with evaluators if enabled.
 
-### E. Follow-up interaction
-- Allow the learner to ask questions about the lesson.
-- Use AI to generate contextually relevant answers.
-- Handle follow-up loading and error states clearly.
+## Features
 
-### F. Deployment
-- Deploy the application to a publicly accessible hosting platform.
-- Submit a live demo URL that evaluators can open and use.
-- Ensure the deployed application does not depend on your local development environment.
+- Generate approximately two-minute lessons for educational topics using live AI.
+- Validated lesson data: 4–7 scenes (the prompt targets 6), narration, timed diagrams, and chapter takeaways.
+- Generated voice narration; actual audio time drives the whiteboard state.
+- Play, pause, resume, seek, restart, replay, previous/next chapter, mute, and speed controls.
+- Transcript chapters that seek the lesson when clicked.
+- Pen, highlighter, undo, and SVG board export; scene-specific session annotations.
+- Click diagram labels to compose contextual follow-up questions.
+- Contextual AI answers with a bounded conversation history.
+- A generated concept check with answer feedback.
+- Last 12 lessons saved in this browser; searchable library and lesson JSON export.
+- Responsive mobile tabs, keyboard-friendly inputs, reduced motion, native dialog focus management, and explicit loading/error/cancel states.
 
-## 4. Technical expectations
+## Architecture
 
-You may choose your own frontend, backend, database, whiteboard/canvas library, AI provider, and hosting platform.
+```text
+Topic → POST /api/lesson → OpenAI structured output → Zod validation
+                                                     ↓
+                                           Typed lesson + scenes
+                                                     ↓
+Prepare voice → POST /api/speech (2 concurrent) → audio Blob URLs
+                                                     ↓
+                                     measured scene audio durations
+                                                     ↓
+                                   HTMLAudioElement.currentTime
+                                                     ↓
+                              absolute lesson time → scene + progress
+                                                     ↓
+                                 deterministic SVG element visibility
 
-You may use AI coding assistants and other development tools. However, you must understand the code you submit and be able to explain your key implementation decisions.
+Follow-up + lesson + recent messages → POST /api/chat → AI answer
+```
 
-Your implementation should demonstrate:
-- A clear separation of concerns.
-- Readable, organized, maintainable code.
-- Sensible handling of asynchronous operations and errors.
-- Secure handling of API keys and environment variables.
-- A reliable relationship between lesson data, narration, and whiteboard events.
+Next.js route handlers run on Node.js, so no separate Express server is needed. Credentials never enter client code. The browser uses same-origin API requests. Lesson/chat requests use `store: false`; this does not override the provider's data-retention policies.
 
-You do not need to use a specific technology stack. Choose tools that help you deliver a reliable working product.
+### Synchronization and seeking
 
-## 5. Submission requirements
+Every scene contains narration and diagram primitives with `reveal` fractions between 0 and 0.9. Voice preparation creates one audio track per scene and measures its **actual duration**. Two client workers limit concurrent speech requests. Audio stays in memory; Blob URLs are revoked on lesson changes/unmount.
 
-Submit **all three** items:
+The player's absolute time is derived from the current audio track's `currentTime`. The board renders only elements revealed by that scene's progress. Seeking reconstructs the target board directly instead of replaying timers, so rewinding removes future elements. Speed changes use `audio.playbackRate`, keeping audio and visuals on the same clock. User annotations remain scoped to their scenes for the session.
 
-1. **GitHub repository URL** — the complete source code.
-2. **Live demo URL** — a deployed, working application.
-3. **Google Form submission** — provide your details and both URLs using the submission form shared with you by the Braynix Studios team.
+Scene transitions follow the actual audio ending. Individual reveal fractions are authored by the model and scaled to measured narration duration; these are **approximate within-scene timings, not forced-aligned word timestamps**. Word-level alignment is a possible future enhancement.
 
-Before submitting, verify that:
-- The repository is accessible to evaluators.
-- The README explains how to install and run the project.
-- Required environment variables are documented (use placeholders, never real secrets).
-- The live demo URL works.
-- The main user flow can be completed without relying on local files or services.
+Browser voice is an explicit free fallback using Web Speech boundary events and estimated durations. Seeking restarts from a nearby word. Some voices do not emit reliable boundary events; their diagrams advance at scene endings. AI voice is the recommended evaluation path for precise continuous seeking. Audio failures are visible; there is no silent switch to fallback narration.
 
-## 6. Evaluation rubric
+### Validated drawing data
 
-The assignment will be evaluated out of **100 points**.
+`lib/lesson.ts` defines the shared Zod contract. The renderer supports allowlisted SVG primitives: rectangles, ellipses, text, lines, and arrows, with fixed colors. Generated HTML/JavaScript is never executed. React escapes labels. The server validates data, clamps geometry, and assigns unique element IDs. Model-generated facts and layout can still vary; focused topics and follow-ups help clarify an explanation.
 
-| Evaluation area | Points | What we look for |
-|---|---:|---|
-| End-to-end functionality | 25 | The complete learner flow works, from entering a topic to completing a lesson and asking a follow-up question. |
-| AI lesson generation | 15 | The lesson is meaningfully AI-generated, structured, coherent, and appropriate to the topic. |
-| Whiteboard demonstrations | 20 | Visual explanations are useful, clear, step-by-step, and relevant to the narration. |
-| Voice and timeline synchronization | 15 | Narration and whiteboard events remain aligned; playback and seeking behave reliably. |
-| UI/UX and usability | 10 | The product is intuitive, responsive, accessible, and pleasant to use. |
-| Code quality and architecture | 10 | Code is organized, understandable, maintainable, and handles errors appropriately. |
-| README and documentation | 5 | Setup, configuration, architecture, and usage instructions are clear. |
-| **Total** | **100** | |
+### Storage
 
-### Evaluation guidance
+No database is required for the assignment. Lessons are stored in browser `localStorage`, capped at 12 and validated on read. Conversation, annotations, and audio are session-only. Reopening a saved lesson requires preparing audio again. There are no accounts or cross-device history. Supabase would be useful for authenticated, cross-device persistence later; leaving it optional keeps the core flow independent of database setup.
 
-- **85–100:** Strong submission
-- **70–84:** Promising submission
-- **50–69:** Needs further evaluation
-- **Below 50:** Does not currently meet the expected standard
+## Source layout
 
-These bands are guidance; the final assessment may also consider the applicant's ability to explain and demonstrate their implementation.
+```text
+app/api/{lesson,chat,speech,status}/route.ts   Node.js endpoints
+app/{layout,page}.tsx, globals.css            App entry and responsive styles
+components/tutor.tsx                         Chat, library, playback UI, quiz
+components/whiteboard.tsx                    SVG renderer and drawing tools
+hooks/use-player.ts                          Narration lifecycle and synchronization
+lib/lesson.ts                                Schemas and deterministic timeline math
+lib/prompts.ts                               Lesson and follow-up prompts
+lib/server.ts                                API client, guards, validation, errors
+lib/client.ts                                Same-origin requests and exports
+lib/sample.ts                                Explicitly labeled sample content
+tests/*.test.ts                              Timeline, contracts, request security
+tests/e2e/tutor.spec.ts                       Browser journeys with mocked AI/audio
+docs/ASSIGNMENT.md                           Original assignment
+docs/EVALUATION.md                           Smoke test and submission checklist
+```
 
-## 7. Important rules
+## Checks
 
-- **Build a functional product, not only a UI prototype.**
-- AI-generated lesson content and follow-up answers should be real. Do not substitute hardcoded or prewritten responses while presenting them as live AI output.
-- Do not use a static prerecorded video as a replacement for synchronized whiteboard teaching.
-- Visible controls must work. Do not include buttons or interactions that do nothing.
-- Do not commit API keys, passwords, tokens, or other credentials. Use environment variables and provide an example environment file with placeholder values if needed.
-- Include clear local setup instructions in your repository.
-- Make sure the deployed demo is available for evaluation.
-- Be prepared to explain the architecture, AI integration, synchronization approach, and important code decisions.
+```bash
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
 
-## 8. Suggested README sections for your submission repository
+Browser tests use installed **Google Chrome** locally and Playwright Chromium in CI, and start a local server automatically. If Chrome is unavailable, install it or run `npx playwright install chromium` and set `CI=1` when running browser tests. Restricted Windows environments may require permission to spawn Node workers or launch Chrome. The included GitHub Actions workflow runs formatting, unit tests, production build, typecheck, and browser tests without requiring API secrets.
 
-Your own project repository should include:
-- Project overview
-- Features
-- Technology stack
-- Architecture or data-flow overview
-- Prerequisites
-- Local installation and setup
-- Environment variables
-- How to run the application
-- Live demo URL
-- Known limitations or unfinished items
+Unit tests cover timestamp mapping, chapter boundaries, rewind visibility, lesson validation, body limits, cross-origin calls, access codes, and request budgets. Browser tests use an explicit AI fixture and synthetic WAV audio to test actual browser playback without API spending. **Mocked tests do not prove live provider integration.** Complete the real-key smoke test in [docs/EVALUATION.md](docs/EVALUATION.md) before submitting.
 
-## 9. What a successful submission looks like
+## Deploy publicly on Vercel
 
-A successful submission lets an evaluator:
-1. Open the deployed application.
-2. Enter a topic they choose.
-3. Generate an AI-powered lesson.
-4. Watch the whiteboard demonstrate the topic while hearing synchronized narration.
-5. Pause, resume, seek, restart, and replay the lesson.
-6. Ask a follow-up question and receive a relevant AI response.
+This is a Node.js Next.js app. A static export cannot run its AI endpoints. Vercel is the intended deployment target; Sites' static/Worker hosting is not the native target for this implementation.
 
-The quality of the learning experience matters more than the number of features. Focus on making the core teaching flow genuinely work.
+1. Create a **new repository under your own GitHub account**. Upload this project's source, `.env.example`, and `package-lock.json`. Do not push your solution to Braynix's starter repository. Exclude `.env.local`, caches, `node_modules`, and `.next`.
+2. In Vercel select **Add New → Project**, import your repository, and keep the **Next.js** preset. Use Node.js 22+, `npm ci`, and `npm run build`. The included `vercel.json` sets the framework and commands. No custom output directory is needed.
+3. In **Project Settings → Environment Variables**, set `OPENAI_API_KEY` for Production. Set optional model/access-code variables as desired. Runtime secrets belong on the host, never in the source repository.
+4. Deploy. Redeploy after any environment changes. API routes declare a 120-second maximum duration; confirm the host/plan supports that duration. Speech generation uses separate requests with two concurrent calls.
+5. Make the production deployment publicly accessible in your hosting protection settings. Open its production URL in incognito and run the entire real-key smoke test.
+6. Record the verified production URL in this README, then submit it and your own GitHub URL in the form.
 
----
+**Deployment status:** The source is prepared for deployment. No public demo has been published from this workspace. Hosting requires your account, API key, and own repository. Replace this paragraph with the verified live URL after publishing.
 
-**Braynix Studios**  
-*Building AI-powered products and solutions.*
+If you cloned the assignment starter, create your GitHub repository first, then:
 
-For assignment-related clarification, contact the Braynix Studios team through the communication channel used to share this assignment.
+```bash
+git remote rename origin assignment
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git add .
+git commit -m "Build Lumio AI whiteboard tutor"
+git push -u origin HEAD
+```
+
+Review `git status` and `git diff --cached` before committing to verify that secrets are excluded. GitHub Desktop or the GitHub web interface also works.
+
+## Costs, security, and limitations
+
+- A new lesson makes one structured model request. Voice preparation makes one speech request per scene. A follow-up makes one text request. Replaying prepared audio in the same session makes no new provider calls.
+- Set a provider spending budget. A best-effort in-memory limiter allows 12 lessons, 90 speech requests, and 35 follow-ups per IP/10 minutes **per server instance**. Serverless instances do not share counters. For open public traffic use a shared limiter/gateway; an optional access code helps protect a small controlled demo. It is shared demo protection, not account authentication.
+- Request inputs are bounded, body size is capped at 64 KiB, and cross-origin browser API calls are rejected. API responses are not cached. Error logs include metadata rather than submitted topic/conversation content.
+- Lesson and narration preparation take separate steps. Canceling an in-flight request does not guarantee the provider stops charging for work already started.
+- Runtime depends on narration word count, voice, and speed; the prompt targets approximately two minutes. Prepared audio is session-only.
+- English and plain Unicode equations are the primary presentation. Complex mathematics does not have a LaTeX renderer. Model content can be inaccurate, and diagrams may need refinement.
+- Google Fonts are optional; local sans-serif fallbacks work if external fonts are unavailable.
+- OpenAI documents the default Speech API models as retiring on **January 6, 2027**, after this assignment's November deadline. For long-term hosting, migrate the isolated speech route before retirement. A Realtime model requires a different API workflow, not just a model-string change. See the [official speech documentation](https://developers.openai.com/api/docs/guides/text-to-speech).
+
+## Submission
+
+Deadline supplied by Braynix: **18 November 2026**. Submit your accessible GitHub repository, a public working demo, and the [submission form](https://docs.google.com/forms/d/e/1FAIpQLSdFJoTxMEuFZrCHTbEgv7bbg2uLf33SjP7n0w2qUONR4kMRcA/viewform?usp=dialog). Running locally does not complete deployment or form submission.
+
+References: [Next.js App Router](https://nextjs.org/docs/app), [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [OpenAI text to speech](https://developers.openai.com/api/docs/guides/text-to-speech).
